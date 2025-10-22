@@ -1,0 +1,20 @@
+# ==========================================
+# VINILO DAO
+# Acceso a datos de vinilos
+# ==========================================
+class ViniloDAO:
+    def agregarVinilo(self, vinilo) -> None:
+        """Crea una nuevo vinilo."""
+        pass
+
+    def eliminarVinilo(self, vinilo_id: int) -> None:
+        """Elimina un vinilo por ID."""
+        pass
+
+    def editarVinilo(self, vinilo) -> None:
+        """Actualiza datos de un vinilo existente."""
+        pass
+
+    def buscarVinilo(self, vinilo_id: int):
+        """Obtiene una vinilo por ID (o None)."""
+        pass
