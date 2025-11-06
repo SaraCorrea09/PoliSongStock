@@ -1,9 +1,9 @@
 from flask import Flask, request, jsonify
-from flask_cors import CORS  # para permitir peticiones desde React
-from Managers.catalogoManager import filtrar_vinilos
+from flask_cors import CORS
+from Managers.catalogoManager import CatalogoManager
 
 app = Flask(__name__)
-CORS(app)  # permite conexión desde React
+CORS(app)
 
 @app.route('/api/vinilos', methods=['GET'])
 def obtener_vinilos():
@@ -15,18 +15,17 @@ def obtener_vinilos():
     if disponible is not None:
         disponible = disponible.lower() == 'true'
 
-    vinilos = filtrar_vinilos(genero, precio_min, precio_max, calidad, disponible)
+    manager = CatalogoManager()
+    vinilos = manager.filtrar_vinilos(genero, precio_min, precio_max, calidad, disponible)
 
-    # Convertimos los objetos Vinilo a JSON
     data = [{
-        'id': v.id,
+        'vinilo_id': v.vinilo_id,
         'nombre': v.nombre,
         'artista': v.artista,
-        'genero': v.genero,
-        'anio': v.anio,
+        'anio': v.año,
         'precio': v.precio,
-        'calidad': v.calidad,
-        'cantidad': v.cantidad
+        'cantidad': v.cantidad,
+        'vendedor_id': v.vendedor_id
     } for v in vinilos]
 
     return jsonify(data)

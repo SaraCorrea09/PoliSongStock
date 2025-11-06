@@ -5,21 +5,11 @@
 # ---------------------------------------------------------
 
 class Vinilo:
-    def __init__(self, id: int, nombre: str, artista: str, genero: str, cantidad: int, precio: float):
-        # Identificador único del vinilo
-        self.id = id
-        
-        # Nombre del vinilo
+    def __init__(self, vinilo_id, nombre, artista, año, precio, cantidad, vendedor_id):
+        self.vinilo_id = vinilo_id
         self.nombre = nombre
-        
-        # Nombre del artista o banda
         self.artista = artista
-        
-        # Género musical (Ej: "Rock", "Pop", "Jazz")
-        self.genero = genero
-        
-        # Cantidad disponible en inventario
-        self.cantidad = cantidad
-        
-        # Precio de venta del vinilo
+        self.año = año
         self.precio = precio
+        self.cantidad = cantidad
+        self.vendedor_id = vendedor_id

@@ -1,7 +1,9 @@
+import CatalogoVinilos from "./components/CatalogoVinilos";
+
 function App() {
   return (
-    <div>
-      <h1>PoliSongStock React</h1>
+    <div className="App">
+      <CatalogoVinilos />
     </div>
   );
 }
