@@ -8,6 +8,7 @@
 class CancionDAO:
 
     def agregarCancion(self, cancion):
+        #Hola pirobitos
         # Inserta una nueva canción en la base de datos
         # con su información correspondiente (nombre, artista, género, duración, etc.)
         pass
