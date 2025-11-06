@@ -1,6 +1,7 @@
 # ==========================
 # ADMINISTRADOR
 # Hereda de Usuario, maneja la configuración general
+from .Usuario import Usuario
 # ==========================
 class Administrador(Usuario):
     def gestionarUsuarios(self):

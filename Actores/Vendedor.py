@@ -2,6 +2,8 @@
 # VENDEDOR
 # Hereda de Usuario, maneja los productos y las órdenes
 # ==========================
+from .Usuario import Usuario
+
 class Vendedor(Usuario):
     def registrarVinilo(self):
         pass  # Crea un nuevo vinilo

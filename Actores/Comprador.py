@@ -2,6 +2,8 @@
 # COMPRADOR
 # Hereda de Usuario, representa a quien compra productos
 # ==========================
+from .Usuario import Usuario
+
 class Comprador(Usuario):
     def buscarProducto(self):
         pass  # Permite buscar un producto en el catálogo
