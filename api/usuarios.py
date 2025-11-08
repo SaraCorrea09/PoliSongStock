@@ -1,7 +1,7 @@
 # api/usuarios.py
 from flask import Blueprint, request, jsonify
 from Managers.usuarioManager import UsuarioManager
-from dao.usuarioDAO import UsuarioDAO
+from DAO.usuarioDAO import UsuarioDAO
 
 bp = Blueprint("usuarios_api", __name__, url_prefix="/api/usuarios")
 mgr = UsuarioManager()

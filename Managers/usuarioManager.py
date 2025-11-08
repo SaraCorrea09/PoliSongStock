@@ -6,7 +6,7 @@
 # usuario_manager.py
 from typing import Optional, Dict, Any
 from core.models import Usuario
-from dao.usuarioDAO import UsuarioDAO
+from DAO.usuarioDAO import UsuarioDAO
 
 class UsuarioManager:
     def registrar_usuario(self, data: Dict[str, Any]) -> int:
