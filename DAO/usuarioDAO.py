@@ -5,22 +5,96 @@
 # Permite registrar, modificar, eliminar y consultar usuarios.
 # ---------------------------------------------------------
 
+# usuario_dao.py
+from typing import Optional, List
+from database import get_connection
+from core.models import Usuario
+
 class UsuarioDAO:
+    @staticmethod
+    def agregar_usuario(u: Usuario) -> int:
+        conn = get_connection()
+        try:
+            cur = conn.cursor()
+            cur.execute("""
+                INSERT INTO usuarios (nombre, correo, contrasena, telefono, rol)
+                VALUES (?, ?, ?, ?, ?);
+            """, (u.nombre, u.correo, u.contrasena, u.telefono, u.rol))
+            conn.commit()
+            return cur.lastrowid
+        finally:
+            conn.close()
 
-    def agregarUsuario(self, usuario):
-        # Inserta un nuevo usuario en la base de datos
-        # Incluye datos como nombre, correo, contraseña, rol, etc.
-        pass
+    @staticmethod
+    def eliminar_usuario(usuario_id: int) -> bool:
+        conn = get_connection()
+        try:
+            cur = conn.cursor()
+            cur.execute("DELETE FROM usuarios WHERE usuario_id = ?;", (usuario_id,))
+            conn.commit()
+            return cur.rowcount > 0
+        finally:
+            conn.close()
 
-    def eliminarUsuario(self, id_usuario):
-        # Elimina un usuario de la base de datos según su identificador
-        pass
+    @staticmethod
+    def editar_usuario(u: Usuario) -> bool:
+        conn = get_connection()
+        try:
+            cur = conn.cursor()
+            cur.execute("""
+                UPDATE usuarios
+                   SET nombre = ?, correo = ?, contrasena = ?, telefono = ?, rol = ?
+                 WHERE usuario_id = ?;
+            """, (u.nombre, u.correo, u.contrasena, u.telefono, u.rol, u.usuario_id))
+            conn.commit()
+            return cur.rowcount > 0
+        finally:
+            conn.close()
 
-    def editarUsuario(self, usuario):
-        # Actualiza la información de un usuario existente
-        # Por ejemplo, para cambiar su correo, contraseña o rol
-        pass
+    @staticmethod
+    def buscar_por_id(usuario_id: int) -> Optional[Usuario]:
+        conn = get_connection()
+        try:
+            cur = conn.cursor()
+            cur.execute("""
+                SELECT usuario_id, nombre, correo, contrasena, telefono, rol
+                  FROM usuarios WHERE usuario_id = ?;
+            """, (usuario_id,))
+            row = cur.fetchone()
+            if not row:
+                return None
+            return Usuario(*row)
+        finally:
+            conn.close()
 
-    def buscarUsuario(self, id_usuario):
-        # Busca y retorna la información de un usuario específico según su ID
-        pass
+    @staticmethod
+    def buscar_por_correo(correo: str) -> Optional[Usuario]:
+        conn = get_connection()
+        try:
+            cur = conn.cursor()
+            cur.execute("""
+                SELECT usuario_id, nombre, correo, contrasena, telefono, rol
+                  FROM usuarios WHERE correo = ?;
+            """, (correo,))
+            row = cur.fetchone()
+            if not row:
+                return None
+            return Usuario(*row)
+        finally:
+            conn.close()
+
+    @staticmethod
+    def listar(limit: int = 50, offset: int = 0) -> List[Usuario]:
+        conn = get_connection()
+        try:
+            cur = conn.cursor()
+            cur.execute("""
+                SELECT usuario_id, nombre, correo, contrasena, telefono, rol
+                  FROM usuarios
+                 ORDER BY usuario_id
+                 LIMIT ? OFFSET ?;
+            """, (limit, offset))
+            rows = cur.fetchall()
+            return [Usuario(*r) for r in rows]
+        finally:
+            conn.close()

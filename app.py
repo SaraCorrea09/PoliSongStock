@@ -1,35 +1,11 @@
-from flask import Flask, request, jsonify
-from flask_cors import CORS
-from Managers.catalogoManager import CatalogoManager
+from flask import Flask
+from api import register_apis
 
-app = Flask(__name__)
-CORS(app)
+def create_app():
+    app = Flask(__name__)
+    register_apis(app)
+    return app
 
-@app.route('/api/vinilos', methods=['GET'])
-def obtener_vinilos():
-    genero = request.args.get('genero')
-    precio_min = request.args.get('precio_min', type=float)
-    precio_max = request.args.get('precio_max', type=float)
-    calidad = request.args.get('calidad')
-    disponible = request.args.get('disponible')
-    if disponible is not None:
-        disponible = disponible.lower() == 'true'
-
-    manager = CatalogoManager()
-    vinilos = manager.filtrar_vinilos(genero, precio_min, precio_max, calidad, disponible)
-
-    data = [{
-        'vinilo_id': v.vinilo_id,
-        'nombre': v.nombre,
-        'artista': v.artista,
-        'anio': v.año,
-        'precio': v.precio,
-        'cantidad': v.cantidad,
-        'vendedor_id': v.vendedor_id
-    } for v in vinilos]
-
-    return jsonify(data)
-
-
-if __name__ == '__main__':
-    app.run(debug=True)
+if __name__ == "__main__":
+    app = create_app()
+    app.run(debug=True)  # http://127.0.0.1:5000
