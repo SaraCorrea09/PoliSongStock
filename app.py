@@ -1,11 +1,13 @@
 from flask import Flask
 from api import register_apis
+from flask_cors import CORS   
 
 def create_app():
     app = Flask(__name__)
+    CORS(app)  
     register_apis(app)
     return app
 
 if __name__ == "__main__":
     app = create_app()
-    app.run(debug=True)  # http://127.0.0.1:5000
+    app.run(debug=True)

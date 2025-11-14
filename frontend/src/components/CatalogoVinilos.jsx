@@ -10,27 +10,54 @@ function CatalogoVinilos() {
     disponible: ""
   });
 
-  // Manejar cambios de los inputs
+  // Actualizar filtros
   const handleChange = (e) => {
     setFiltros({ ...filtros, [e.target.name]: e.target.value });
   };
 
-  // Llamar al backend Flask
-  const buscarVinilos = async () => {
-    const params = new URLSearchParams(filtros);
-    const response = await fetch(`http://localhost:5000/api/vinilos?${params}`);
-    const data = await response.json();
-    setVinilos(data);
+  // Construir solo los filtros que NO están vacíos
+  const construirQuery = () => {
+    const params = new URLSearchParams();
+    Object.entries(filtros).forEach(([key, value]) => {
+      if (value !== "" && value !== null) {
+        params.append(key, value);
+      }
+    });
+    return params.toString();
   };
 
-  // Cargar todos los vinilos al iniciar
+  // Llamar al backend Flask
+  const buscarVinilos = async () => {
+    try {
+      const query = construirQuery();
+      const url = query
+        ? `http://localhost:5000/vinilos?${query}`
+        : `http://localhost:5000/vinilos`;
+
+      console.log("URL usada:", url);
+
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        console.error("Error en respuesta del servidor:", response.status);
+        return;
+      }
+
+      const data = await response.json();
+      setVinilos(data);
+    } catch (error) {
+      console.error("Error en fetch:", error);
+    }
+  };
+
+  // Cargar los vinilos al inicio
   useEffect(() => {
     buscarVinilos();
   }, []);
 
   return (
     <div style={{ padding: "20px", fontFamily: "Arial" }}>
-      <h1>🎵 Catálogo de Vinilos</h1>
+      <h1>Catálogo de Vinilos</h1>
 
       <div style={{ display: "flex", gap: "10px", marginBottom: "20px" }}>
         <input
@@ -39,23 +66,27 @@ function CatalogoVinilos() {
           placeholder="Género"
           onChange={handleChange}
         />
+
         <input
           type="number"
           name="precio_min"
           placeholder="Precio mínimo"
           onChange={handleChange}
         />
+
         <input
           type="number"
           name="precio_max"
           placeholder="Precio máximo"
           onChange={handleChange}
         />
+
         <select name="disponible" onChange={handleChange}>
           <option value="">Disponibilidad</option>
           <option value="true">Disponible</option>
           <option value="false">Agotado</option>
         </select>
+
         <button onClick={buscarVinilos}>Filtrar</button>
       </div>
 
