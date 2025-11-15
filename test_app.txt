@@ -1,0 +1,56 @@
+import pytest
+from app import create_app  # ¡Asegúrate de que esto esté al inicio!
+
+# --- ESTA ES LA FUNCIÓN QUE TE FALTA ---
+@pytest.fixture
+def app():
+    # Crea la instancia de la app
+    app = create_app()
+    
+    # Configura la app para el modo "Testing"
+    app.config.update({
+        "TESTING": True,
+    })
+    yield app
+
+def test_get_usuario_especifico(client):
+    """
+    Prueba que la ruta GET /api/usuarios/1 funciona
+    y devuelve los datos de un usuario.
+    """
+    print("\n🚀 Probando GET /api/usuarios/1...")
+
+    # 1. Actuar (Act)
+    response = client.get('/api/usuarios/1')
+
+    # 2. Verificar (Assert)
+    
+    # Comprobamos el código de estado
+    assert response.status_code == 200, "El código de estado no fue 200"
+
+    # Convertimos a JSON
+    data = response.json
+    print(f"Respuesta recibida: {data}")
+
+    # --- Asserts Corregidos ---
+    
+    # Verificamos la estructura general
+    assert 'ok' in data
+    assert data['ok'] == True
+    assert 'usuario' in data
+    
+    # Verificamos los datos DENTRO de 'usuario'
+    usuario = data['usuario']
+    
+    assert usuario['usuario_id'] == 1, "El ID del usuario no es 1"
+    assert 'nombre' in usuario
+    
+    # ----- ¡AQUÍ ESTÁ LA CORRECCIÓN! -----
+    assert 'correo' in usuario 
+    
+    # También puedes verificar el resto de los campos
+    assert 'rol' in usuario
+    assert 'telefono' in usuario
+    assert usuario['nombre'] == "Juan Perez" 
+
+    print("✅ ¡Prueba pasada!")
