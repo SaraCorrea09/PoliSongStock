@@ -1,0 +1,5 @@
+
+# Ignorar carpetas __pycache__ y archivos compilados de Python
+__pycache__/
+*.py[cod]
+node_modules/

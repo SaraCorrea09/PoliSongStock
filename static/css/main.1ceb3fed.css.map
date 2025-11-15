@@ -1,0 +1,1 @@
+{"version":3,"file":"static/css/main.1ceb3fed.css","mappings":"AAEA,gBACE,WACF,CAEA,gBAEE,YAAa,CACb,qBAAsB,CAFtB,eAGF","sources":["index.css"],"sourcesContent":["\r\n\r\nhtml, body, #root {\r\n  height: 100%;\r\n}\r\n\r\n.page-container {\r\n  min-height: 100%;\r\n  display: flex;\r\n  flex-direction: column;\r\n}\r\n\r\n"],"names":[],"sourceRoot":""}

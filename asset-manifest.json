@@ -1,0 +1,13 @@
+{
+  "files": {
+    "main.css": "/PoliSongStock/static/css/main.1ceb3fed.css",
+    "main.js": "/PoliSongStock/static/js/main.dc102834.js",
+    "index.html": "/PoliSongStock/index.html",
+    "main.1ceb3fed.css.map": "/PoliSongStock/static/css/main.1ceb3fed.css.map",
+    "main.dc102834.js.map": "/PoliSongStock/static/js/main.dc102834.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.1ceb3fed.css",
+    "static/js/main.dc102834.js"
+  ]
+}
