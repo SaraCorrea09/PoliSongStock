@@ -28,11 +28,17 @@ class UsuarioManager:
         )
         return UsuarioDAO.agregar_usuario(u)
 
-    def autentificar_usuario(self, correo: str, contrasena: str) -> bool:
-        u = UsuarioDAO.buscar_por_correo(correo)
-        if not u:
-            return False
-        return u.contrasena == contrasena
+    def autentificar_usuario(self, correo: str, contrasena: str) -> Optional[Usuario]:
+        correo = correo.strip().lower()
+        usuario = UsuarioDAO.buscar_por_correo(correo)
+
+        if not usuario:
+            return None
+
+        if usuario.contrasena != contrasena:
+            return None
+
+        return usuario  # Retorna el objeto para trabajar en frontend (sesión)
 
     def editar_perfil(self, usuario_id: int, data: Dict[str, Any]) -> bool:
         u = UsuarioDAO.buscar_por_id(usuario_id)
