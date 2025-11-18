@@ -61,8 +61,21 @@ def borrar_usuario(usuario_id):
 @bp.post("/login")
 def login():
     data = request.get_json() or {}
+
     if not data.get("correo") or not data.get("contrasena"):
         return jsonify({"ok": False, "error": "correo y contrasena requeridos"}), 400
-    if mgr.autentificar_usuario(data["correo"], data["contrasena"]):
-        return jsonify({"ok": True})
-    return jsonify({"ok": False, "error": "credenciales inválidas"}), 401
+
+    usuario = mgr.autentificar_usuario(data["correo"], data["contrasena"])
+
+    if usuario:
+        return jsonify({
+            "ok": True,
+            "usuario": {
+                "usuario_id": usuario.usuario_id,
+                "nombre": usuario.nombre,
+                "correo": usuario.correo,
+                "rol": usuario.rol
+            }
+        })
+    else:
+        return jsonify({"ok": False, "error": "credenciales inválidas"}), 401
