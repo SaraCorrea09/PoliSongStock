@@ -27,7 +27,8 @@ def listar_vinilos():
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    # 🔴 Si tu tabla NO se llama 'vinilos', luego cambiamos este nombre.
+    # 🔴 verificar nombre de tabla.
+    
     cursor.execute("SELECT * FROM vinilos;")
 
     filas = cursor.fetchall()

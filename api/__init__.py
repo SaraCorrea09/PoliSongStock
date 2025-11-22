@@ -17,6 +17,8 @@ def register_apis(app):
     from api.compras import bp as pasarela_bp
     app.register_blueprint(pasarela_bp)
     
+    # Nuevas APIs:
+    
     from api.canciones import bp as canciones_bp
     app.register_blueprint(canciones_bp)
     

@@ -29,7 +29,7 @@ def listar_canciones():
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    # 🔴 Si tu tabla NO se llama 'canciones', cambia el nombre aquí.
+    # 🔴 Verificar tabla canciones.
     cursor.execute("SELECT * FROM canciones_nueva;")
 
     filas = cursor.fetchall()
