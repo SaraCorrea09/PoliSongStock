@@ -14,7 +14,11 @@ def register_apis(app):
     from api.traer_compras_cancioness import bp as traer_compras_canciones_bp
     app.register_blueprint(traer_compras_canciones_bp)
     
-    
     from api.compras import bp as pasarela_bp
     app.register_blueprint(pasarela_bp)
     
+    from api.canciones import bp as canciones_bp
+    app.register_blueprint(canciones_bp)
+    
+    from api.vinilos import bp as vinilos_bp
+    app.register_blueprint(vinilos_bp)
