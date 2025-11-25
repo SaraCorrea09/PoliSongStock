@@ -30,9 +30,33 @@ class UsuarioDAO:
         conn = get_connection()
         try:
             cur = conn.cursor()
+            
+            # Verificar que el usuario existe primero
+            cur.execute("SELECT usuario_id FROM usuarios WHERE usuario_id = ?;", (usuario_id,))
+            if not cur.fetchone():
+                return False  # Usuario no existe
+            
+            # Desactivar temporalmente las foreign keys para este DELETE
+            cur.execute("PRAGMA foreign_keys = OFF;")
+            
+            # Eliminar las canciones donde es vendedor
+            cur.execute("DELETE FROM canciones_nueva WHERE usuario_vendedor_id = ?;", (usuario_id,))
+            
+            # Poner NULL donde es comprador
+            cur.execute("UPDATE canciones_nueva SET usuario_comprador_id = NULL WHERE usuario_comprador_id = ?;", (usuario_id,))
+            
+            # Eliminar el usuario
             cur.execute("DELETE FROM usuarios WHERE usuario_id = ?;", (usuario_id,))
+            
+            # Reactivar foreign keys
+            cur.execute("PRAGMA foreign_keys = ON;")
+            
             conn.commit()
-            return cur.rowcount > 0
+            return True
+        except Exception as e:
+            conn.rollback()
+            print(f"Error al eliminar usuario: {e}")
+            return False
         finally:
             conn.close()
 

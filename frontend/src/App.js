@@ -8,12 +8,13 @@ import RegistrarUsuario from "./components/RegistrarUsuario";
 import AdminPanel from "./components/AdminPanel"; 
 import UserList from "./components/UserList"; 
 import UsuarioPanel from "./components/UsuarioPanel"; 
-import CatalogoCancion from "./components/CatalogoCancion"; 
 import GestionVinilos from "./components/GestionVinilos";
 import EditarPerfil from "./components/EditarPerfil";
 import Carrito from "./components/Carrito";
 import Recopilaciones from "./components/Recopilaciones";
 import HistorialCompras from "./components/HistorialCompras";
+import CatalogoCancion from "./components/CatalogoCancion";
+import ReporteVentas from "./components/ReporteVentas";
 function App() {
   return (
     <AuthProvider>
@@ -33,6 +34,7 @@ function App() {
             <Route path="/perfil" element={<EditarPerfil />} />
             <Route path="/carrito" element={<Carrito />} />
             <Route path="/compras" element={<HistorialCompras/>} />
+            <Route path="/reportes" element={<ReporteVentas/>} />
           </Route>
         </Routes>
       </Router>

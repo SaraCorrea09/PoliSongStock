@@ -56,6 +56,26 @@ def create_db():
             FOREIGN KEY (cancion_id) REFERENCES canciones(cancion_id) ON DELETE CASCADE
         );
         """)
+        
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS recopilaciones (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            usuario_id INTEGER NOT NULL,
+            nombre TEXT NOT NULL,
+            descripcion TEXT,
+            publica INTEGER NOT NULL DEFAULT 0
+        ); """)
+        
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS recopilacion_canciones (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            recopilacion_id INTEGER NOT NULL,
+            cancion_id INTEGER NOT NULL,
+            FOREIGN KEY (recopilacion_id) REFERENCES recopilaciones(id) ON DELETE CASCADE,
+            FOREIGN KEY (cancion_id) REFERENCES canciones_nueva(id)
+        );""")
+
+
 
         conn.commit()
         print("✅ Base de datos 'polisongstock.db' creada con todas las tablas.")

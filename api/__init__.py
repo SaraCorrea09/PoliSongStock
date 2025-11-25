@@ -24,3 +24,6 @@ def register_apis(app):
     
     from api.vinilos import bp as vinilos_bp
     app.register_blueprint(vinilos_bp)
+    
+    from api.recopilaciones import bp as recopilaciones_bp
+    app.register_blueprint(recopilaciones_bp)

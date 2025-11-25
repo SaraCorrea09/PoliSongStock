@@ -1,42 +1,47 @@
-from flask import Blueprint, request, jsonify
-import sqlite3
+from flask import Blueprint, jsonify
+from database import get_connection
 
 bp = Blueprint('traer_compras_canciones', __name__, url_prefix='/api/traer-compras-canciones')
-DATABASE = 'polisongstock.db'
 
-def get_db_connection():
-    conn = sqlite3.connect(DATABASE)
-    conn.row_factory = sqlite3.Row
-    return conn
 
 @bp.route('/comprador/<int:comprador_id>', methods=['GET'])
 def traer_compras_canciones_comprador(comprador_id):
     try:
-        conn = get_db_connection()
-        compras = conn.execute(
-            'SELECT * FROM compras_canciones WHERE comprador_id = ?', 
-            (comprador_id,)
-        ).fetchall()
-        conn.close()
-        
-        if not compras:
-            return jsonify({
-                'mensaje': 'No se encontraron compras de canciones para este comprador',
-                'comprador_id': comprador_id,
-                'compras': []
-            }), 200
-        
-        # Convertir las filas a diccionarios
-        compras_list = [dict(compra) for compra in compras]
-        
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        query = """
+    SELECT 
+        cc.compra_id,
+        cc.cancion_id,
+        cc.comprador_id,
+        cc.vendedor_id,
+        cc.fecha_compra,
+        c.nombre AS titulo,
+        c.artista,
+        c.genero,
+        c.duracion,
+        c.precio AS precio
+    FROM compras_canciones cc
+    JOIN canciones_nueva c ON cc.cancion_id = c.id
+    WHERE cc.comprador_id = ?
+"""
+
+
+        cursor.execute(query, (comprador_id,))
+        filas = cursor.fetchall()
+
+        columnas = [col[0] for col in cursor.description]
+        compras = [dict(zip(columnas, fila)) for fila in filas]
+
         return jsonify({
-            'comprador_id': comprador_id,
-            'total_compras': len(compras_list),
-            'compras': compras_list
+            "comprador_id": comprador_id,
+            "total_compras": len(compras),
+            "compras": compras
         }), 200
-        
+
     except Exception as e:
         return jsonify({
-            'error': 'Error al consultar las compras de canciones',
-            'detalle': str(e)
+            "error": "Error al consultar las compras de canciones",
+            "detalle": str(e)
         }), 500

@@ -6,7 +6,6 @@ function Carrito() {
   const [metodo, setMetodo] = useState("");
   const [confirmado, setConfirmado] = useState(false);
 
-  // Obtener usuario desde localStorage igual que AdminPanel
   const usuario = {
     usuario_id: localStorage.getItem("usuarioId"),
     nombre:
@@ -23,6 +22,8 @@ function Carrito() {
     setCarrito(data);
   }, []);
 
+  console.log("CARRITO:", carrito);
+
   const eliminarCancion = (id) => {
     const nuevo = carrito.filter((c) => c.id !== id);
     setCarrito(nuevo);
@@ -36,47 +37,93 @@ function Carrito() {
 
   const total = carrito.length;
 
-  // 👉 Enviar compra a las APIs reales
-  const registrarCompra = async () => {
+  const procesarPago = async () => {
+    if (!metodo) return;
     if (!usuario.usuario_id) {
       alert("Debes iniciar sesión para comprar.");
       return;
     }
 
-    for (const item of carrito) {
-      const compra = {
-        comprador_id: usuario.usuario_id,
-        vendedor_id: item.vendedor_id,
-      };
+    try {
+      for (const item of carrito) {
+        // ---- FIX ID REAL ----
+        const idReal =
+          item.vinilo_id ||
+          item.cancion_id ||
+          item.id ||
+          item.ID ||
+          null;
 
-      if (item.tipo === "cancion") {
-        compra.cancion_id = item.id;
-        await fetch("http://localhost:5000/api/compras-canciones", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(compra),
-        });
-      } else if (item.tipo === "vinilo") {
-        compra.cancion_id = item.id; // así lo definieron tus compañeros 🤷‍♂️
-        await fetch("http://localhost:5000/api/compras-vinilo", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(compra),
-        });
+        // ---- FIX vendedor ----
+        const vendedorReal =
+          item.vendedor_id ||
+          item.usuario_id ||
+          item.dueno_id ||
+          0;
+
+        if (!idReal) {
+          console.error("❌ Item sin ID válido:", item);
+          alert("Hubo un artículo sin ID válido en el carrito.");
+          return;
+        }
+
+        if (item.tipo === "cancion") {
+          const compra = {
+            comprador_id: Number(usuario.usuario_id),
+            vendedor_id: vendedorReal,
+            cancion_id: idReal,
+          };
+
+          console.log("📤 Enviando compra de canción:", compra);
+
+          const resp = await fetch("http://localhost:5000/api/compras-canciones", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(compra),
+          });
+
+          const data = await resp.json();
+          console.log("📥 Respuesta:", data);
+
+          if (!resp.ok) {
+            alert("Error al registrar la compra: " + (data.error || "Error"));
+            return;
+          }
+        }
+
+        else if (item.tipo === "vinilo") {
+          const compra = {
+            comprador_id: Number(usuario.usuario_id),
+            vendedor_id: vendedorReal,
+            vinilo_id: idReal,
+          };
+
+          console.log("📤 Enviando compra de vinilo:", compra);
+
+          const resp = await fetch("http://localhost:5000/api/compras-vinilo", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(compra),
+          });
+
+          const data = await resp.json();
+
+          if (!resp.ok) {
+            alert(
+              "Error al registrar la compra de vinilo: " + (data.error || "Error")
+            );
+            return;
+          }
+        }
       }
-    }
-  };
 
-  const procesarPago = async () => {
-    if (!metodo) return;
-
-    await registrarCompra();
-
-    setTimeout(() => {
       setConfirmado(true);
       vaciarCarrito();
       setTimeout(() => setMostrarPago(false), 2000);
-    }, 1500);
+    } catch (error) {
+      console.error("Error en la compra:", error);
+      alert("No se pudo procesar el pago.");
+    }
   };
 
   return (
@@ -92,9 +139,8 @@ function Carrito() {
 
       <div className="row g-4">
         {carrito.map((c) => (
-          <div className="col-md-6" key={c.id}>
+          <div className="col-md-6" key={c.id || c.vinilo_id || c.cancion_id}>
             <div className="card shadow-sm p-3 d-flex flex-row align-items-center">
-
               <div
                 className="rounded-circle bg-dark text-white d-flex justify-content-center align-items-center"
                 style={{ width: "55px", height: "55px", fontSize: "20px" }}
@@ -103,12 +149,10 @@ function Carrito() {
               </div>
 
               <div className="ms-3 flex-grow-1">
-                <h5 className="fw-bold mb-1">{c.titulo}</h5>
-                <p className="text-muted mb-1">{c.autor}</p>
+                <h5 className="fw-bold mb-1">{c.nombre || c.titulo}</h5>
+                <p className="text-muted mb-1">{c.artista || c.autor}</p>
                 {c.duracion && (
-                  <small className="text-secondary">
-                    Duración: {c.duracion}
-                  </small>
+                  <small className="text-secondary">Duración: {c.duracion}</small>
                 )}
               </div>
 
@@ -134,7 +178,6 @@ function Carrito() {
             <button className="btn btn-danger flex-grow-1" onClick={vaciarCarrito}>
               Vaciar carrito
             </button>
-
             <button
               className="btn btn-success flex-grow-1"
               onClick={() => setMostrarPago(true)}
@@ -145,7 +188,6 @@ function Carrito() {
         </div>
       )}
 
-      {/* MODAL */}
       {mostrarPago && (
         <div
           className="modal fade show"
@@ -165,7 +207,6 @@ function Carrito() {
 
                   <div className="modal-body">
                     <p className="fw-semibold">Selecciona método de pago:</p>
-
                     <div className="d-flex flex-column gap-3">
                       <div
                         className={`p-3 rounded-3 border ${
@@ -176,7 +217,6 @@ function Carrito() {
                       >
                         💳 Tarjeta
                       </div>
-
                       <div
                         className={`p-3 rounded-3 border ${
                           metodo === "nequi" ? "border-primary" : ""
@@ -186,7 +226,6 @@ function Carrito() {
                       >
                         📱 Nequi
                       </div>
-
                       <div
                         className={`p-3 rounded-3 border ${
                           metodo === "bancolombia" ? "border-primary" : ""
@@ -206,7 +245,6 @@ function Carrito() {
                     >
                       Cancelar
                     </button>
-
                     <button
                       className="btn btn-success"
                       disabled={!metodo}

@@ -1,219 +1,331 @@
 import React, { useEffect, useState } from "react";
+import { esAdmin } from "../utils/auth";
+import { agregarAlCarrito } from "../utils/carrito";
 
-function CatalogoCanciones() {
+function CatalogoCancion() {
   const [canciones, setCanciones] = useState([]);
-  const [carrito, setCarrito] = useState([]);
-  const [recopilaciones, setRecopilaciones] = useState([]);
-  const [modalRecopilacion, setModalRecopilacion] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  const usuarioId = localStorage.getItem("usuarioId");
+  // Para el CRUD de Admin
+  const [modoEdicion, setModoEdicion] = useState(false);
+  const [form, setForm] = useState({
+    id: null,
+    nombre: "",
+    artista: "",
+    genero: "",
+    precio: 0,
+    duracion: "",
+    tamano_mb: "",
+    calidad_kbps: "",
+    imagen: null,
+  });
 
-  // ===============================
-  // 🔹 Cargar canciones desde API
-  // ===============================
+  const [mostrarForm, setMostrarForm] = useState(false);
+
+  // ============================
+  // Cargar canciones
+  // ============================
+  const cargarCanciones = () => {
+    fetch("http://localhost:5000/api/canciones/")
+      .then((res) => res.json())
+      .then((data) => {
+        const cancionesAdaptadas = (Array.isArray(data) ? data : []).map((c) => ({
+          id: c.id,
+          nombre: c.nombre || c.titulo || "",
+          artista: c.artista || c.autor || "",
+          genero: c.genero || "",
+          precio: c.precio || c.precio_cancion || 0,
+          duracion: c.duracion || "",
+          tamano_mb: c.tamano_mb || "",
+          calidad_kbps: c.calidad_kbps || "",
+          imagen: c.imagen || c.imagen_base64 || null,
+          vendedor_id: c.vendedor_id || c.usuario_id || null,
+        }));
+
+        setCanciones(cancionesAdaptadas);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error("Error cargando canciones:", err);
+        setLoading(false);
+      });
+  };
+
   useEffect(() => {
-    const cargarCanciones = async () => {
-      try {
-        const res = await fetch("http://TU_API/canciones"); // <- CAMBIAR CUANDO TENGAS LA API
-        const data = await res.json();
-
-        // Si aún no tienes API, usa datos temporales bonitos:
-        const fallback = [
-          {
-            id: 1,
-            titulo: "Shine On You",
-            autor: "Pink Floyd",
-            duracion: "5:12",
-            portada: "https://i.imgur.com/bQfQJ2W.jpeg",
-            vinilosAsociados: [
-              { id: 22, nombre: "The Best of Pink Floyd", precio: 89000 }
-            ]
-          },
-          {
-            id: 2,
-            titulo: "Waves",
-            autor: "Joji",
-            duracion: "3:25",
-            portada: "https://i.imgur.com/x6H6owT.jpeg",
-            vinilosAsociados: []
-          },
-          {
-            id: 3,
-            titulo: "Lost In Yesterday",
-            autor: "Tame Impala",
-            duracion: "4:08",
-            portada: "https://i.imgur.com/OwZb1Bt.jpeg",
-            vinilosAsociados: [
-              { id: 51, nombre: "Slow Rush Vinyl", precio: 120000 }
-            ]
-          }
-        ];
-
-        setCanciones(data || fallback);
-      } catch (e) {
-        console.error("Error cargando canciones:", e);
-      }
-    };
-
     cargarCanciones();
-
-    // Recopilaciones del usuario
-    const recs = JSON.parse(localStorage.getItem("recopilaciones")) || [];
-    setRecopilaciones(recs.filter(r => r.creadorId === usuarioId));
-
-    // Carrito
-    setCarrito(JSON.parse(localStorage.getItem("carrito")) || []);
   }, []);
 
+  // ============================
+  // CRUD PARA ADMINS
+  // ============================
+const guardarCancion = async () => {
+  const method = modoEdicion ? "PUT" : "POST";
+  const url = modoEdicion
+    ? `http://localhost:5000/api/canciones/${form.id}`
+    : `http://localhost:5000/api/canciones`;
 
-  // ===============================
-  // 🔹 Agregar al carrito
-  // ===============================
-  const agregarCarrito = (c) => {
-    const nuevo = [...carrito, c];
-    setCarrito(nuevo);
-    localStorage.setItem("carrito", JSON.stringify(nuevo));
+  // Conversión correcta MB → KB
+  const tamanoKB = Number(form.tamano_mb) * 1024;
+
+  // Para POST usa usuario_vendedor_id
+  // Para PUT usa vendedor_id
+  const dataEnviar = {
+    nombre: form.nombre,
+    artista: form.artista,
+    genero: form.genero,
+    duracion: form.duracion,
+    tamano_kb: tamanoKB,
+    calidad_kbps: Number(form.calidad_kbps),
+    precio: Number(form.precio),
+    ...(modoEdicion
+      ? { vendedor_id: form.vendedor_id || 1 } // PUT
+      : { usuario_vendedor_id: form.vendedor_id || 1 } // POST
+    ),
   };
 
-  // ===============================
-  // 🔹 Agregar a recopilación
-  // ===============================
-  const agregarARecopilacion = (idRec, cancion) => {
-    const todas = JSON.parse(localStorage.getItem("recopilaciones")) || [];
+  try {
+    const res = await fetch(url, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(dataEnviar),
+    });
 
-    const actualizado = todas.map((rec) =>
-      rec.id === idRec
-        ? { ...rec, canciones: [...rec.canciones, cancion] }
-        : rec
-    );
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      console.error("Error backend:", err);
+      alert("Error al guardar la canción");
+      return;
+    }
 
-    localStorage.setItem("recopilaciones", JSON.stringify(actualizado));
-    setRecopilaciones(actualizado.filter((r) => r.creadorId === usuarioId));
-    setModalRecopilacion(null);
+    setMostrarForm(false);
+    setModoEdicion(false);
+    cargarCanciones();
+  } catch (err) {
+    console.error("Error guardando:", err);
+    alert("Error al guardar");
+  }
+};
+  const eliminarCancion = async (id) => {
+    if (!window.confirm("¿Eliminar esta canción?")) return;
 
-    alert("Agregado a tu recopilación 🎵");
+    try {
+      const res = await fetch(`http://localhost:5000/api/canciones/${id}`, {
+        method: "DELETE",
+      });
+
+      if (!res.ok) {
+        alert("Error eliminando canción");
+        return;
+      }
+
+      cargarCanciones();
+    } catch (err) {
+      console.error(err);
+      alert("Error eliminando canción");
+    }
   };
+
+  const abrirEdicion = (c) => {
+    setForm(c);
+    setModoEdicion(true);
+    setMostrarForm(true);
+  };
+
+  const abrirNuevo = () => {
+    setForm({
+      id: null,
+      nombre: "",
+      artista: "",
+      genero: "",
+      precio: 0,
+      duracion: "",
+      tamano_mb: "",
+      calidad_kbps: "",
+      imagen: null,
+    });
+    setModoEdicion(false);
+    setMostrarForm(true);
+  };
+
+  // ============================
+  // Render
+  // ============================
+  if (loading) return <p className="text-center">Cargando canciones...</p>;
+  if (canciones.length === 0) return <p className="text-center">No hay canciones disponibles.</p>;
 
   return (
-    <div className="container py-5">
-      
-      <h1 className="fw-bold mb-4">
-        Catálogo de Canciones 🎵
-      </h1>
+    <div className="container mt-4">
+      <h2 className="fw-bold mb-4 text-center">
+        <i className="fa-solid fa-music"></i> Catálogo de Canciones
+      </h2>
 
-      {/* GRID DE CANCIONES */}
-      <div className="row g-4">
-        {canciones.map((c) => (
-          <div className="col-md-4 col-lg-3" key={c.id}>
-            <div className="card shadow-lg border-0 h-100">
-              
-              {/* Imagen */}
-              <img
-                src={c.portada || "https://i.imgur.com/Z5wQ1.png"}
-                className="card-img-top"
-                style={{ height: "200px", objectFit: "cover" }}
-                alt="portada"
+      {/* ======================= */}
+      {/* FORMULARIO ADMIN */}
+      {/* ======================= */}
+      {esAdmin() && (
+        <>
+          <button className="btn btn-success mb-3" onClick={abrirNuevo}>
+            <i className="fa-solid fa-plus"></i> Nueva Canción
+          </button>
+
+          {mostrarForm && (
+            <div className="card mb-4 p-3 shadow">
+              <h5 className="fw-bold">{modoEdicion ? "Editar Canción" : "Nueva Canción"}</h5>
+
+              <input
+                className="form-control mt-2"
+                placeholder="Nombre"
+                value={form.nombre}
+                onChange={(e) => setForm({ ...form, nombre: e.target.value })}
               />
 
-              <div className="card-body">
-                <h5 className="fw-bold">{c.titulo}</h5>
-                <p className="text-muted mb-1">{c.autor}</p>
-                <small className="text-secondary">
-                  ⏱ {c.duracion}
-                </small>
+              <input
+                className="form-control mt-2"
+                placeholder="Artista"
+                value={form.artista}
+                onChange={(e) => setForm({ ...form, artista: e.target.value })}
+              />
 
-                {/* Si pertenece a un vinilo */}
-                {c.vinilosAsociados.length > 0 && (
-                  <div className="mt-2 p-2 bg-light rounded">
-                    <small className="text-success fw-bold">
-                      🟣 Disponible en vinilo:
-                    </small>
-                    {c.vinilosAsociados.map(v => (
-                      <div key={v.id}>
-                        <small>{v.nombre} – ${v.precio}</small>
-                      </div>
-                    ))}
-                  </div>
+              <input
+                className="form-control mt-2"
+                placeholder="Género"
+                value={form.genero}
+                onChange={(e) => setForm({ ...form, genero: e.target.value })}
+              />
+
+              <input
+                className="form-control mt-2"
+                placeholder="Precio"
+                type="number"
+                value={form.precio}
+                onChange={(e) => setForm({ ...form, precio: Number(e.target.value) })}
+              />
+
+              <input
+                className="form-control mt-2"
+                placeholder="Duración"
+                value={form.duracion}
+                onChange={(e) => setForm({ ...form, duracion: e.target.value })}
+              />
+
+              <input
+                className="form-control mt-2"
+                placeholder="Tamaño en MB"
+                value={form.tamano_mb}
+                onChange={(e) => setForm({ ...form, tamano_mb: e.target.value })}
+              />
+
+              <input
+                className="form-control mt-2"
+                placeholder="Calidad en kbps"
+                value={form.calidad_kbps}
+                onChange={(e) => setForm({ ...form, calidad_kbps: e.target.value })}
+              />
+
+              <button className="btn btn-primary mt-3" onClick={guardarCancion}>
+                Guardar
+              </button>
+              <button
+                className="btn btn-secondary mt-3 ms-2"
+                onClick={() => setMostrarForm(false)}
+              >
+                Cancelar
+              </button>
+            </div>
+          )}
+        </>
+      )}
+
+      <div className="row">
+        {canciones.map((cancion) => (
+          <div key={cancion.id} className="col-md-4 mb-4">
+            <div className="card h-100 shadow-sm">
+              {cancion.imagen ? (
+                <img
+                  src={
+                    cancion.imagen.startsWith("data:")
+                      ? cancion.imagen
+                      : `data:image/png;base64,${cancion.imagen}`
+                  }
+                  className="card-img-top"
+                  alt={cancion.nombre}
+                  style={{ height: "200px", objectFit: "cover" }}
+                />
+              ) : (
+                <div
+                  className="d-flex align-items-center justify-content-center bg-dark text-white"
+                  style={{ height: "200px" }}
+                >
+                  Sin imagen
+                </div>
+              )}
+
+              <div className="card-body">
+                <h5 className="fw-bold">{cancion.nombre}</h5>
+                <p>
+                  <strong>Artista:</strong> {cancion.artista} <br />
+                  <strong>Género:</strong> {cancion.genero} <br />
+                  <strong>Precio:</strong> ${cancion.precio}
+                </p>
+
+                <p className="text-muted small">
+                  Duración: {cancion.duracion} • {cancion.tamano_mb} MB •{" "}
+                  {cancion.calidad_kbps} kbps
+                </p>
+
+                {/* ============================== */}
+                {/* OPCIONES PARA ADMIN */}
+                {/* ============================== */}
+                {esAdmin() && (
+                  <>
+                    <button
+                      className="btn btn-warning w-100 mb-2"
+                      onClick={() => abrirEdicion(cancion)}
+                    >
+                      <i className="fa-solid fa-pen"></i> Editar
+                    </button>
+
+                    <button
+                      className="btn btn-danger w-100"
+                      onClick={() => eliminarCancion(cancion.id)}
+                    >
+                      <i className="fa-solid fa-trash"></i> Eliminar
+                    </button>
+                  </>
                 )}
 
-                {/* BOTONES */}
-                <button
-                  className="btn btn-primary w-100 mt-3"
-                  onClick={() => agregarCarrito(c)}
-                >
-                  Agregar al carrito 🛒
-                </button>
-
-                <button
-                  className="btn btn-outline-success w-100 mt-2"
-                  onClick={() => setModalRecopilacion(c)}
-                >
-                  Agregar a recopilación ➕
-                </button>
+                {/* ============================== */}
+                {/* OPCIONES PARA CLIENTES */}
+                {/* ============================== */}
+                {!esAdmin() && (
+                  <button
+                    className="btn btn-primary w-100"
+                    onClick={() =>
+                      agregarAlCarrito(
+                        {
+                          id: cancion.id,
+                          nombre: cancion.nombre,
+                          artista: cancion.artista,
+                          precio: cancion.precio,
+                          vendedor_id: cancion.vendedor_id,
+                          tipo: "cancion",
+                          cantidad: 1,
+                          precio_total: cancion.precio,
+                        },
+                        "cancion"
+                      )
+                    }
+                  >
+                    <i className="fa-solid fa-cart-plus"></i> Agregar al carrito
+                  </button>
+                )}
               </div>
-
             </div>
           </div>
         ))}
       </div>
-
-
-      {/* ======================================
-         MODAL: Seleccionar recopilación
-      ======================================= */}
-      {modalRecopilacion && (
-        <div className="modal-backdrop-custom">
-          <div className="modal-card p-4 shadow-lg">
-            <h5 className="fw-bold mb-3">
-              Agregar "{modalRecopilacion.titulo}" a una recopilación
-            </h5>
-
-            {recopilaciones.length === 0 && (
-              <p className="text-muted">No tienes recopilaciones todavía.</p>
-            )}
-
-            {recopilaciones.map((rec) => (
-              <button
-                key={rec.id}
-                className="btn btn-outline-dark w-100 mb-2"
-                onClick={() =>
-                  agregarARecopilacion(rec.id, modalRecopilacion)
-                }
-              >
-                {rec.nombre}
-              </button>
-            ))}
-
-            <button
-              className="btn btn-secondary w-100 mt-2"
-              onClick={() => setModalRecopilacion(null)}
-            >
-              Cancelar
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Estilos del modal */}
-      <style>{`
-        .modal-backdrop-custom {
-          position: fixed;
-          inset: 0;
-          background: rgba(0,0,0,0.5);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          z-index: 1000;
-        }
-        .modal-card {
-          background: white;
-          border-radius: 12px;
-          width: 400px;
-        }
-      `}</style>
-
     </div>
   );
 }
 
-export default CatalogoCanciones;
+export default CatalogoCancion;

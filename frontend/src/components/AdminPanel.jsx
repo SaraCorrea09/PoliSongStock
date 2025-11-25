@@ -4,6 +4,7 @@ import RegistrarUsuario from "./RegistrarUsuario";
 import CatalogoVinilos from "./CatalogoVinilos";
 import { useNavigate } from "react-router-dom";
 import CatalogoCanciones from "./CatalogoCancion";
+import ReporteVentas from "./ReporteVentas";
 
 function AdminPanel() {
   const [section, setSection] = useState("home");
@@ -158,8 +159,7 @@ function AdminPanel() {
           <button className="btn btn-dark mb-3" onClick={() => setSection("home")}>
             <i class="fa-solid fa-angles-left"></i> Volver
           </button>
-          <h2>Reportes</h2>
-          <p>Pronto verás reportes avanzados aquí.</p>
+          <ReporteVentas />
         </div>
       )}
     </div>

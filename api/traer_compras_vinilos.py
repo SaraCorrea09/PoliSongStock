@@ -13,28 +13,46 @@ def get_db_connection():
 def traer_compras_vinilos_comprador(comprador_id):
     try:
         conn = get_db_connection()
-        compras = conn.execute(
-            'SELECT * FROM compras WHERE comprador_id = ?', 
-            (comprador_id,)
-        ).fetchall()
-        conn.close()
         
+        query = """
+            SELECT 
+                c.compra_id,
+                c.comprador_id,
+                c.vendedor_id,
+                c.vinilo_id,
+                c.fecha_compra,
+                c.vendedor_acepta,
+                c.pago_enviado,
+                c.compra_recibida,
+                
+                v.nombre AS nombre_vinilo,
+                v.artista,
+                v.anio,
+                v.precio,
+                v.cantidad
+            FROM Compras c
+            JOIN vinilos v ON c.vinilo_id = v.vinilo_id
+            WHERE c.comprador_id = ?
+        """
+        
+        compras = conn.execute(query, (comprador_id,)).fetchall()
+        conn.close()
+
         if not compras:
             return jsonify({
                 'mensaje': 'No se encontraron compras de vinilos para este comprador',
                 'comprador_id': comprador_id,
                 'compras': []
             }), 200
-        
-        # Convertir las filas a diccionarios
+
         compras_list = [dict(compra) for compra in compras]
-        
+
         return jsonify({
             'comprador_id': comprador_id,
             'total_compras': len(compras_list),
             'compras': compras_list
         }), 200
-        
+
     except Exception as e:
         return jsonify({
             'error': 'Error al consultar las compras de vinilos',

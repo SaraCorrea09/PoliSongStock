@@ -1,16 +1,42 @@
-# ==========================================
-# RECOPILACION MANAGER
-# Reglas del negocio para recopilar canciones
-# ==========================================
+from Datos.RecopilacionDAO import RecopilacionDAO
+from database import get_connection
+
+
 class RecopilacionManager:
+
+    def __init__(self):
+        self.dao = RecopilacionDAO()
+
+    # ================================
+    # CREAR
+    # ================================
     def crearRecopilacion(self, recop) -> int:
-        """Crea una recopilación y retorna su ID."""
-        pass
+        return self.dao.agregarRecopilacion(recop)
 
-    def agregarCancion(self, recop_id: int, cancion) -> None:
-        """Asocia una canción a la recopilación."""
-        pass
+    # ================================
+    # AGREGAR CANCIÓN
+    # ================================
+    def agregarCancion(self, recop_id: int, cancion_id: int) -> None:
+        conn = get_connection()
+        cur = conn.cursor()
 
+        cur.execute("""
+            INSERT INTO recopilacion_canciones (recopilacion_id, cancion_id)
+            VALUES (?, ?)
+        """, (recop_id, cancion_id))
+
+        conn.commit()
+
+    # ================================
+    # ELIMINAR CANCIÓN
+    # ================================
     def eliminarCancion(self, recop_id: int, cancion_id: int) -> None:
-        """Quita una canción de la recopilación."""
-        pass
+        conn = get_connection()
+        cur = conn.cursor()
+
+        cur.execute("""
+            DELETE FROM recopilacion_canciones
+            WHERE recopilacion_id=? AND cancion_id=?
+        """, (recop_id, cancion_id))
+
+        conn.commit()

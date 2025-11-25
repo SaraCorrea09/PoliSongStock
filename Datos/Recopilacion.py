@@ -5,12 +5,11 @@
 # ---------------------------------------------------------
 
 class Recopilacion:
-    def __init__(self, id: int, nombre: str, es_publica: bool):
-        # Identificador único de la recopilación
+    def __init__(self, id: int, usuario_id: int, nombre: str, descripcion: str, publica: bool, canciones=None):
         self.id = id
-        
-        # Nombre asignado a la recopilación
+        self.usuario_id = usuario_id
         self.nombre = nombre
-        
-        # Indica si la recopilación es pública o privada
-        self.es_publica = es_publica
+        self.descripcion = descripcion
+        self.publica = publica
+        self.canciones = canciones if canciones is not None else []
+
