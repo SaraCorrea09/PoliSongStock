@@ -25,10 +25,28 @@ function Carrito() {
   console.log("CARRITO:", carrito);
 
   const eliminarCancion = (id) => {
-    const nuevo = carrito.filter((c) => c.id !== id);
-    setCarrito(nuevo);
-    localStorage.setItem("carrito", JSON.stringify(nuevo));
-  };
+  // Buscar el índice del PRIMER elemento que matchee ese id
+  const index = carrito.findIndex(
+    (item) =>
+      item.id === id ||
+      item.vinilo_id === id ||
+      item.cancion_id === id
+  );
+
+  // Si no existe, no hacer nada
+  if (index === -1) return;
+
+  // Copiar carrito
+  const copia = [...carrito];
+
+  // Quitar SOLO UNA unidad
+  copia.splice(index, 1);
+
+  // Actualizar estado y localStorage
+  setCarrito(copia);
+  localStorage.setItem("carrito", JSON.stringify(copia));
+};
+
 
   const vaciarCarrito = () => {
     setCarrito([]);
@@ -37,94 +55,93 @@ function Carrito() {
 
   const total = carrito.length;
 
-  const procesarPago = async () => {
-    if (!metodo) return;
-    if (!usuario.usuario_id) {
-      alert("Debes iniciar sesión para comprar.");
-      return;
-    }
+  // ----------- NUEVO: TOTAL EN PLATA -----------
+  const totalPrecio = carrito.reduce(
+    (sum, item) => sum + (Number(item.precio) || 0),
+    0
+  );
 
-    try {
-      for (const item of carrito) {
-        // ---- FIX ID REAL ----
-        const idReal =
-          item.vinilo_id ||
-          item.cancion_id ||
-          item.id ||
-          item.ID ||
-          null;
+const procesarPago = async () => {
+  if (!metodo) return;
+  if (!usuario.usuario_id) {
+    alert("Debes iniciar sesión para comprar.");
+    return;
+  }
 
-        // ---- FIX vendedor ----
-        const vendedorReal =
-          item.vendedor_id ||
-          item.usuario_id ||
-          item.dueno_id ||
-          0;
+  try {
+    for (const item of carrito) {
 
-        if (!idReal) {
-          console.error("❌ Item sin ID válido:", item);
-          alert("Hubo un artículo sin ID válido en el carrito.");
+      // NORMALIZAR ID
+      const idReal = item.vinilo_id || item.cancion_id || item.id;
+
+      if (!idReal) {
+        console.log("ERROR: item sin ID", item);
+        alert("Un producto no tiene ID válido.");
+        return;
+      }
+
+      // 🔥🔥 NORMALIZAR VENDEDOR (NUNCA FALLA)
+      const vendedorReal =
+        item.vendedor_id ||
+        item.usuario_id ||
+        item.dueno_id ||
+        Number(usuario.usuario_id); // fallback automático
+
+      // REGISTRAR COMPRA DE CANCIÓN
+      if (item.tipo === "cancion") {
+        const compra = {
+          comprador_id: Number(usuario.usuario_id),
+          vendedor_id: vendedorReal,
+          cancion_id: idReal,
+        };
+
+        const resp = await fetch("http://localhost:5000/api/compras-canciones", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(compra),
+        });
+
+        const data = await resp.json();
+        if (!resp.ok) {
+          alert("Error al registrar compra de canción: " + (data.error || "Error"));
           return;
-        }
-
-        if (item.tipo === "cancion") {
-          const compra = {
-            comprador_id: Number(usuario.usuario_id),
-            vendedor_id: vendedorReal,
-            cancion_id: idReal,
-          };
-
-          console.log("📤 Enviando compra de canción:", compra);
-
-          const resp = await fetch("http://localhost:5000/api/compras-canciones", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(compra),
-          });
-
-          const data = await resp.json();
-          console.log("📥 Respuesta:", data);
-
-          if (!resp.ok) {
-            alert("Error al registrar la compra: " + (data.error || "Error"));
-            return;
-          }
-        }
-
-        else if (item.tipo === "vinilo") {
-          const compra = {
-            comprador_id: Number(usuario.usuario_id),
-            vendedor_id: vendedorReal,
-            vinilo_id: idReal,
-          };
-
-          console.log("📤 Enviando compra de vinilo:", compra);
-
-          const resp = await fetch("http://localhost:5000/api/compras-vinilo", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(compra),
-          });
-
-          const data = await resp.json();
-
-          if (!resp.ok) {
-            alert(
-              "Error al registrar la compra de vinilo: " + (data.error || "Error")
-            );
-            return;
-          }
         }
       }
 
-      setConfirmado(true);
-      vaciarCarrito();
-      setTimeout(() => setMostrarPago(false), 2000);
-    } catch (error) {
-      console.error("Error en la compra:", error);
-      alert("No se pudo procesar el pago.");
+      // REGISTRAR COMPRA DE VINILO
+      if (item.tipo === "vinilo") {
+        const compra = {
+          comprador_id: Number(usuario.usuario_id),
+          vendedor_id: vendedorReal,
+          vinilo_id: idReal,
+        };
+
+        const resp = await fetch("http://localhost:5000/api/compras-vinilo", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(compra),
+        });
+
+        const data = await resp.json();
+        if (!resp.ok) {
+          alert("Error al registrar compra de vinilo: " + (data.error || "Error"));
+          return;
+        }
+      }
     }
-  };
+
+    // Pago OK
+    setConfirmado(true);
+    vaciarCarrito();
+    setTimeout(() => setMostrarPago(false), 2000);
+
+  } catch (error) {
+    console.error("Error en la compra:", error);
+    alert("No se pudo procesar el pago.");
+  }
+};
+
+
 
   return (
     <div className="container py-5">
@@ -151,8 +168,13 @@ function Carrito() {
               <div className="ms-3 flex-grow-1">
                 <h5 className="fw-bold mb-1">{c.nombre || c.titulo}</h5>
                 <p className="text-muted mb-1">{c.artista || c.autor}</p>
+
+                <p className="fw-bold text-success mb-1">${c.precio}</p>
+
                 {c.duracion && (
-                  <small className="text-secondary">Duración: {c.duracion}</small>
+                  <small className="text-secondary">
+                    Duración: {c.duracion}
+                  </small>
                 )}
               </div>
 
@@ -170,8 +192,12 @@ function Carrito() {
       {carrito.length > 0 && (
         <div className="card shadow-sm p-4 mt-5">
           <h4 className="fw-bold mb-3">Resumen del carrito</h4>
+
+          <p className="mb-2">Items seleccionados: <strong>{total}</strong></p>
+
+          {/* ------ TOTAL EN PLATA ------ */}
           <p className="mb-2">
-            Items seleccionados: <strong>{total}</strong>
+            Total a pagar: <strong>${totalPrecio}</strong>
           </p>
 
           <div className="d-flex gap-3 mt-3">
@@ -207,6 +233,7 @@ function Carrito() {
 
                   <div className="modal-body">
                     <p className="fw-semibold">Selecciona método de pago:</p>
+
                     <div className="d-flex flex-column gap-3">
                       <div
                         className={`p-3 rounded-3 border ${
@@ -217,6 +244,7 @@ function Carrito() {
                       >
                         💳 Tarjeta
                       </div>
+
                       <div
                         className={`p-3 rounded-3 border ${
                           metodo === "nequi" ? "border-primary" : ""
@@ -226,6 +254,7 @@ function Carrito() {
                       >
                         📱 Nequi
                       </div>
+
                       <div
                         className={`p-3 rounded-3 border ${
                           metodo === "bancolombia" ? "border-primary" : ""
@@ -245,6 +274,7 @@ function Carrito() {
                     >
                       Cancelar
                     </button>
+
                     <button
                       className="btn btn-success"
                       disabled={!metodo}

@@ -39,8 +39,9 @@ def obtener_vinilo(vinilo_id):
 
 @bp.route("/", methods=["POST"], strict_slashes=False)
 def crear_vinilo():
-    data = request.get_json()
+    data = request.get_json() or {}
     
+    # ahora requerimos usuario_id (tu DB ya usa usuario_id)
     campos = ["nombre", "artista", "anio", "precio", "cantidad", "usuario_id"]
     
     if not all(c in data for c in campos):
@@ -66,7 +67,7 @@ def crear_vinilo():
 
 @bp.route("/<int:vinilo_id>", methods=["PUT"], strict_slashes=False)
 def actualizar_vinilo(vinilo_id):
-    data = request.get_json()
+    data = request.get_json() or {}
     
     campos = ["nombre", "artista", "anio", "precio", "cantidad"]
     if not all(c in data for c in campos):

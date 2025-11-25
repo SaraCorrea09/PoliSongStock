@@ -58,3 +58,41 @@ def traer_compras_vinilos_comprador(comprador_id):
             'error': 'Error al consultar las compras de vinilos',
             'detalle': str(e)
         }), 500
+@bp.route('/todas', methods=['GET'])
+def traer_todas_vinilos():
+    try:
+        conn = get_db_connection()
+
+        query = """
+            SELECT 
+                c.compra_id,
+                c.comprador_id,
+                c.vendedor_id,
+                c.vinilo_id,
+                c.fecha_compra,
+                c.vendedor_acepta,
+                c.pago_enviado,
+                c.compra_recibida,
+                
+                v.nombre AS nombre_vinilo,
+                v.artista,
+                v.anio,
+                v.precio
+            FROM Compras c
+            JOIN vinilos v ON c.vinilo_id = v.vinilo_id
+            ORDER BY c.fecha_compra DESC
+        """
+
+        compras = conn.execute(query).fetchall()
+        conn.close()
+
+        compras_list = [dict(c) for c in compras]
+
+        return jsonify({
+            "ok": True,
+            "total": len(compras_list),
+            "compras": compras_list
+        })
+
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500

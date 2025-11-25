@@ -1,38 +1,37 @@
-// src/utils/carrito.js
-// carrito.js
+export function agregarAlCarrito(item, tipo) {
+  const usuarioRaw = localStorage.getItem("usuarioLogeado");
+  const usuario = usuarioRaw ? JSON.parse(usuarioRaw) : null;
 
-export const agregarAlCarrito = (producto) => {
-    const carrito = JSON.parse(localStorage.getItem("carrito")) || [];
+  const comprador_id = usuario?.id ?? null;
+  const vendedor_id = usuario?.id ?? null; // vendedor es el mismo usuario
 
-    const productoCarrito = {
-        id: producto.vinilo_id || producto.id || null,
-        vinilo_id: producto.vinilo_id || producto.id || null,
-        nombre: producto.nombre,
-        artista: producto.artista,
-        precio: producto.precio,
-        cantidad: 1,
-        tipo: producto.tipo || "vinilo",
-        duracion: producto.duracion || null,
+  // Normalizamos ID real del producto
+  let idReal = null;
 
-        // ← Aquí está el vendedor REAL
-        vendedor_id: producto.usuario_id || producto.vendedor_id || null,
-    };
+  if (tipo === "vinilo") {
+    idReal = item.vinilo_id ?? item.id;
+  } else if (tipo === "cancion") {
+    idReal = item.cancion_id ?? item.id;
+  }
 
-    carrito.push(productoCarrito);
+  if (!idReal) {
+    console.error("ERROR: el producto no tiene ID válido:", item);
+    return;
+  }
 
-    localStorage.setItem("carrito", JSON.stringify(carrito));
-};
+  const producto = {
+    ...item,
+    tipo,
+    comprador_id,
+    vendedor_id,
+    vinilo_id: tipo === "vinilo" ? idReal : null,
+    cancion_id: tipo === "cancion" ? idReal : null,
+    id: idReal, // mantener compatibilidad
+    precio: Number(item.precio) || 0,
+  };
 
-
-export function agregarARecopilacion(cancion) {
-  const rec = JSON.parse(localStorage.getItem("recopilacion")) || [];
-
-  rec.push({
-    ...cancion,
-    titulo: cancion.nombre,
-    autor: cancion.artista,
-  });
-
-  localStorage.setItem("recopilacion", JSON.stringify(rec));
-  alert("Canción agregada a tu recopilación 🎵");
+  // Guardar en localStorage
+  const carrito = JSON.parse(localStorage.getItem("carrito") || "[]");
+  carrito.push(producto);
+  localStorage.setItem("carrito", JSON.stringify(carrito));
 }

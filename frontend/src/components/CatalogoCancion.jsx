@@ -1,329 +1,492 @@
 import React, { useEffect, useState } from "react";
 import { esAdmin } from "../utils/auth";
 import { agregarAlCarrito } from "../utils/carrito";
+import ToastCarrito from "../components/ToastCarrito";
 
 function CatalogoCancion() {
   const [canciones, setCanciones] = useState([]);
+  const [filtradas, setFiltradas] = useState([]);
+  const [compradas, setCompradas] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [toast, setToast] = useState({ show: false, mensaje: "", tipo: "" });
+  
 
-  // Para el CRUD de Admin
-  const [modoEdicion, setModoEdicion] = useState(false);
-  const [form, setForm] = useState({
-    id: null,
+  const usuarioId = Number(localStorage.getItem("usuarioId"));
+  const usuarioEsAdmin = esAdmin();
+
+  // ------------------------------------------------------
+  // ESTADO FILTROS
+  // ------------------------------------------------------
+  const [filtros, setFiltros] = useState({
     nombre: "",
     artista: "",
     genero: "",
-    precio: 0,
-    duracion: "",
-    tamano_mb: "",
-    calidad_kbps: "",
-    imagen: null,
+    precioMin: "",
+    precioMax: "",
   });
 
-  const [mostrarForm, setMostrarForm] = useState(false);
+  const handleFiltro = (e) => {
+    setFiltros({ ...filtros, [ e.target.name ]: e.target.value });
+  };
 
-  // ============================
-  // Cargar canciones
-  // ============================
+  const aplicarFiltros = () => {
+    let lista = [...canciones];
+
+    if (filtros.nombre)
+      lista = lista.filter((x) =>
+        x.nombre.toLowerCase().includes(filtros.nombre.toLowerCase())
+      );
+
+    if (filtros.artista)
+      lista = lista.filter((x) =>
+        x.artista.toLowerCase().includes(filtros.artista.toLowerCase())
+      );
+
+    if (filtros.genero)
+      lista = lista.filter((x) =>
+        x.genero.toLowerCase().includes(filtros.genero.toLowerCase())
+      );
+
+    if (filtros.precioMin)
+      lista = lista.filter((x) => Number(x.precio) >= Number(filtros.precioMin));
+
+    if (filtros.precioMax)
+      lista = lista.filter((x) => Number(x.precio) <= Number(filtros.precioMax));
+
+    setFiltradas(lista);
+  };
+
+  useEffect(() => {
+    aplicarFiltros();
+  }, [filtros, canciones]);
+
+  // ------------------------------------------------------
+  // ESTADO MODALES
+  // ------------------------------------------------------
+  const [nueva, setNueva] = useState({
+    nombre: "",
+    artista: "",
+    genero: "",
+    duracion: "",
+    tamano_kb: "",
+    calidad_kbps: "",
+    precio: "",
+    usuario_vendedor_id: usuarioId,
+  });
+
+  const [editando, setEditando] = useState(null);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+
+    if (editando) {
+      setEditando({ ...editando, [name]: value });
+    } else {
+      setNueva({ ...nueva, [name]: value });
+    }
+  };
+
+  // ------------------------------------------------------
+  // CARGAR CANCIONES
+  // ------------------------------------------------------
   const cargarCanciones = () => {
     fetch("http://localhost:5000/api/canciones/")
       .then((res) => res.json())
       .then((data) => {
-        const cancionesAdaptadas = (Array.isArray(data) ? data : []).map((c) => ({
+        const adaptadas = (Array.isArray(data) ? data : []).map((c) => ({
           id: c.id,
-          nombre: c.nombre || c.titulo || "",
-          artista: c.artista || c.autor || "",
-          genero: c.genero || "",
-          precio: c.precio || c.precio_cancion || 0,
-          duracion: c.duracion || "",
-          tamano_mb: c.tamano_mb || "",
-          calidad_kbps: c.calidad_kbps || "",
-          imagen: c.imagen || c.imagen_base64 || null,
-          vendedor_id: c.vendedor_id || c.usuario_id || null,
+          nombre: c.nombre,
+          artista: c.artista,
+          genero: c.genero,
+          precio: c.precio,
+          duracion: c.duracion,
+          tamano_kb: c.tamano_kb,
+          calidad_kbps: c.calidad_kbps,
+          vendedor_id: c.vendedor_id || usuarioId,
         }));
 
-        setCanciones(cancionesAdaptadas);
+        setCanciones(adaptadas);
         setLoading(false);
       })
-      .catch((err) => {
-        console.error("Error cargando canciones:", err);
-        setLoading(false);
-      });
+      .catch(() => setLoading(false));
   };
 
   useEffect(() => {
     cargarCanciones();
   }, []);
 
-  // ============================
-  // CRUD PARA ADMINS
-  // ============================
-const guardarCancion = async () => {
-  const method = modoEdicion ? "PUT" : "POST";
-  const url = modoEdicion
-    ? `http://localhost:5000/api/canciones/${form.id}`
-    : `http://localhost:5000/api/canciones`;
+  // ------------------------------------------------------
+  // Cargar compras
+  // ------------------------------------------------------
+  useEffect(() => {
+    if (!usuarioId) return;
 
-  // Conversión correcta MB → KB
-  const tamanoKB = Number(form.tamano_mb) * 1024;
+    fetch(`http://localhost:5000/api/traer-compras-canciones/comprador/${usuarioId}`)
+      .then((res) => res.json())
+      .then((data) => {
+        const ids = (data.compras || []).map((c) => c.cancion_id);
+        setCompradas(ids);
+      })
+      .catch((err) => console.error("Error cargando compras:", err));
+  }, [usuarioId]);
 
-  // Para POST usa usuario_vendedor_id
-  // Para PUT usa vendedor_id
-  const dataEnviar = {
-    nombre: form.nombre,
-    artista: form.artista,
-    genero: form.genero,
-    duracion: form.duracion,
-    tamano_kb: tamanoKB,
-    calidad_kbps: Number(form.calidad_kbps),
-    precio: Number(form.precio),
-    ...(modoEdicion
-      ? { vendedor_id: form.vendedor_id || 1 } // PUT
-      : { usuario_vendedor_id: form.vendedor_id || 1 } // POST
-    ),
+  const yaComprada = (id) => compradas.includes(id);
+
+  // ------------------------------------------------------
+  // CREAR
+  // ------------------------------------------------------
+  const mostrarToast = (mensaje, tipo = "success") => {
+    setToast({ show: true, mensaje, tipo });
+    setTimeout(() => setToast({ show: false, mensaje: "", tipo: "" }), 2500);
   };
 
-  try {
-    const res = await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(dataEnviar),
-    });
+  const crearCancion = async () => {
+    try {
+      const payload = {
+        ...nueva,
+        usuario_vendedor_id: usuarioId,
+      };
 
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      console.error("Error backend:", err);
-      alert("Error al guardar la canción");
-      return;
+      const res = await fetch("http://localhost:5000/api/canciones/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+
+      if (!data.ok) {
+        mostrarToast("Error: " + data.error, "error");
+        return;
+      }
+
+      document.getElementById("btnCerrarModalCrear").click();
+
+      setNueva({
+        nombre: "",
+        artista: "",
+        genero: "",
+        duracion: "",
+        tamano_kb: "",
+        calidad_kbps: "",
+        precio: "",
+        usuario_vendedor_id: usuarioId,
+      });
+
+      cargarCanciones();
+      mostrarToast("Canción creada con éxito!");
+    } catch {
+      mostrarToast("Error al crear canción", "error");
     }
+  };
 
-    setMostrarForm(false);
-    setModoEdicion(false);
-    cargarCanciones();
-  } catch (err) {
-    console.error("Error guardando:", err);
-    alert("Error al guardar");
-  }
-};
+  // ------------------------------------------------------
+  // EDITAR
+  // ------------------------------------------------------
+  const abrirEditar = (c) => {
+    setEditando({
+      id: c.id,
+      nombre: c.nombre,
+      artista: c.artista,
+      genero: c.genero,
+      duracion: c.duracion,
+      tamano_kb: c.tamano_kb,
+      calidad_kbps: c.calidad_kbps,
+      precio: c.precio,
+      vendedor_id: usuarioId,
+    });
+  };
+
+  const editarCancionFn = async () => {
+    try {
+      const payload = {
+        nombre: editando.nombre,
+        artista: editando.artista,
+        genero: editando.genero,
+        duracion: editando.duracion,
+        tamano_kb: editando.tamano_kb,
+        calidad_kbps: editando.calidad_kbps,
+        precio: editando.precio,
+        vendedor_id: usuarioId,
+      };
+
+      const respuesta = await fetch(`http://localhost:5000/api/canciones/${editando.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await respuesta.json();
+
+      if (!data.ok) {
+        mostrarToast("Error: " + data.error, "error");
+        return;
+      }
+
+      document.getElementById("btnCerrarModalEditar").click();
+      setEditando(null);
+      cargarCanciones();
+      mostrarToast("Canción editada con éxito!");
+
+    } catch {
+      mostrarToast("Error al editar canción", "error");
+    }
+  };
+
+  // ------------------------------------------------------
+  // ELIMINAR
+  // ------------------------------------------------------
+  
   const eliminarCancion = async (id) => {
-    if (!window.confirm("¿Eliminar esta canción?")) return;
+    if (!window.confirm("¿Seguro que deseas eliminar esta canción?")) return;
 
     try {
       const res = await fetch(`http://localhost:5000/api/canciones/${id}`, {
         method: "DELETE",
       });
 
-      if (!res.ok) {
-        alert("Error eliminando canción");
+      const data = await res.json();
+
+      if (!data.ok) {
+        mostrarToast("Error: " + data.error, "error");
         return;
       }
 
       cargarCanciones();
-    } catch (err) {
-      console.error(err);
-      alert("Error eliminando canción");
+      mostrarToast("Canción eliminada!");
+
+    } catch {
+      mostrarToast("Error al eliminar canción", "error");
     }
   };
 
-  const abrirEdicion = (c) => {
-    setForm(c);
-    setModoEdicion(true);
-    setMostrarForm(true);
-  };
-
-  const abrirNuevo = () => {
-    setForm({
-      id: null,
-      nombre: "",
-      artista: "",
-      genero: "",
-      precio: 0,
-      duracion: "",
-      tamano_mb: "",
-      calidad_kbps: "",
-      imagen: null,
-    });
-    setModoEdicion(false);
-    setMostrarForm(true);
-  };
-
-  // ============================
-  // Render
-  // ============================
-  if (loading) return <p className="text-center">Cargando canciones...</p>;
-  if (canciones.length === 0) return <p className="text-center">No hay canciones disponibles.</p>;
+  if (loading) return <p>Cargando canciones…</p>;
 
   return (
     <div className="container mt-4">
+
+      <ToastCarrito show={toast.show} mensaje={toast.mensaje} tipo={toast.tipo} />
+
+      {/* BOTÓN CREAR */}
+      {usuarioEsAdmin && (
+        <div className="d-flex justify-content-end mb-3">
+          <button className="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalCrearCancion">
+            <i className="fa-solid fa-plus"></i> Crear Canción
+          </button>
+        </div>
+      )}
+
       <h2 className="fw-bold mb-4 text-center">
         <i className="fa-solid fa-music"></i> Catálogo de Canciones
       </h2>
 
-      {/* ======================= */}
-      {/* FORMULARIO ADMIN */}
-      {/* ======================= */}
-      {esAdmin() && (
-        <>
-          <button className="btn btn-success mb-3" onClick={abrirNuevo}>
-            <i className="fa-solid fa-plus"></i> Nueva Canción
-          </button>
+      {/* FILTROS */}
+      <div className="card p-3 mb-4 shadow-sm">
+        <div className="row g-3">
 
-          {mostrarForm && (
-            <div className="card mb-4 p-3 shadow">
-              <h5 className="fw-bold">{modoEdicion ? "Editar Canción" : "Nueva Canción"}</h5>
+          <div className="col-md-3">
+            <input
+              type="text"
+              name="nombre"
+              placeholder="Filtrar por nombre"
+              className="form-control"
+              value={filtros.nombre}
+              onChange={handleFiltro}
+            />
+          </div>
 
-              <input
-                className="form-control mt-2"
-                placeholder="Nombre"
-                value={form.nombre}
-                onChange={(e) => setForm({ ...form, nombre: e.target.value })}
-              />
+          <div className="col-md-3">
+            <input
+              type="text"
+              name="artista"
+              placeholder="Filtrar por artista"
+              className="form-control"
+              value={filtros.artista}
+              onChange={handleFiltro}
+            />
+          </div>
 
-              <input
-                className="form-control mt-2"
-                placeholder="Artista"
-                value={form.artista}
-                onChange={(e) => setForm({ ...form, artista: e.target.value })}
-              />
+          <div className="col-md-2">
+            <input
+              type="text"
+              name="genero"
+              placeholder="Género"
+              className="form-control"
+              value={filtros.genero}
+              onChange={handleFiltro}
+            />
+          </div>
 
-              <input
-                className="form-control mt-2"
-                placeholder="Género"
-                value={form.genero}
-                onChange={(e) => setForm({ ...form, genero: e.target.value })}
-              />
+          <div className="col-md-2">
+            <input
+              type="number"
+              name="precioMin"
+              placeholder="Precio min"
+              className="form-control"
+              value={filtros.precioMin}
+              onChange={handleFiltro}
+            />
+          </div>
 
-              <input
-                className="form-control mt-2"
-                placeholder="Precio"
-                type="number"
-                value={form.precio}
-                onChange={(e) => setForm({ ...form, precio: Number(e.target.value) })}
-              />
+          <div className="col-md-2">
+            <input
+              type="number"
+              name="precioMax"
+              placeholder="Precio max"
+              className="form-control"
+              value={filtros.precioMax}
+              onChange={handleFiltro}
+            />
+          </div>
 
-              <input
-                className="form-control mt-2"
-                placeholder="Duración"
-                value={form.duracion}
-                onChange={(e) => setForm({ ...form, duracion: e.target.value })}
-              />
+        </div>
+      </div>
 
-              <input
-                className="form-control mt-2"
-                placeholder="Tamaño en MB"
-                value={form.tamano_mb}
-                onChange={(e) => setForm({ ...form, tamano_mb: e.target.value })}
-              />
-
-              <input
-                className="form-control mt-2"
-                placeholder="Calidad en kbps"
-                value={form.calidad_kbps}
-                onChange={(e) => setForm({ ...form, calidad_kbps: e.target.value })}
-              />
-
-              <button className="btn btn-primary mt-3" onClick={guardarCancion}>
-                Guardar
-              </button>
-              <button
-                className="btn btn-secondary mt-3 ms-2"
-                onClick={() => setMostrarForm(false)}
-              >
-                Cancelar
-              </button>
-            </div>
-          )}
-        </>
-      )}
-
+      {/* LISTADO */}
       <div className="row">
-        {canciones.map((cancion) => (
-          <div key={cancion.id} className="col-md-4 mb-4">
+        {filtradas.map((c) => (
+          <div key={c.id} className="col-md-4 mb-4">
             <div className="card h-100 shadow-sm">
-              {cancion.imagen ? (
-                <img
-                  src={
-                    cancion.imagen.startsWith("data:")
-                      ? cancion.imagen
-                      : `data:image/png;base64,${cancion.imagen}`
-                  }
-                  className="card-img-top"
-                  alt={cancion.nombre}
-                  style={{ height: "200px", objectFit: "cover" }}
-                />
-              ) : (
-                <div
-                  className="d-flex align-items-center justify-content-center bg-dark text-white"
-                  style={{ height: "200px" }}
-                >
-                  Sin imagen
-                </div>
-              )}
+
+              <div className="bg-dark text-white d-flex align-items-center justify-content-center" style={{ height: 200 }}>
+                Sin imagen
+              </div>
 
               <div className="card-body">
-                <h5 className="fw-bold">{cancion.nombre}</h5>
+                <h5 className="fw-bold">{c.nombre}</h5>
                 <p>
-                  <strong>Artista:</strong> {cancion.artista} <br />
-                  <strong>Género:</strong> {cancion.genero} <br />
-                  <strong>Precio:</strong> ${cancion.precio}
+                  <strong>Artista:</strong> {c.artista}<br />
+                  <strong>Género:</strong> {c.genero}<br />
+                  <strong>Precio:</strong> ${c.precio}
                 </p>
 
                 <p className="text-muted small">
-                  Duración: {cancion.duracion} • {cancion.tamano_mb} MB •{" "}
-                  {cancion.calidad_kbps} kbps
+                  Dur: {c.duracion} • {c.tamano_kb} KB • {c.calidad_kbps} kbps
                 </p>
 
-                {/* ============================== */}
-                {/* OPCIONES PARA ADMIN */}
-                {/* ============================== */}
-                {esAdmin() && (
+                {usuarioEsAdmin ? (
+                  <div className="d-flex gap-2">
+                    <button
+                      className="btn btn-warning w-50"
+                      data-bs-toggle="modal"
+                      data-bs-target="#modalEditarCancion"
+                      onClick={() => abrirEditar(c)}
+                    >
+                      Editar
+                    </button>
+
+                    <button
+                      className="btn btn-danger w-50"
+                      onClick={() => eliminarCancion(c.id)}
+                    >
+                      Eliminar
+                    </button>
+                  </div>
+                ) : (
                   <>
-                    <button
-                      className="btn btn-warning w-100 mb-2"
-                      onClick={() => abrirEdicion(cancion)}
-                    >
-                      <i className="fa-solid fa-pen"></i> Editar
-                    </button>
-
-                    <button
-                      className="btn btn-danger w-100"
-                      onClick={() => eliminarCancion(cancion.id)}
-                    >
-                      <i className="fa-solid fa-trash"></i> Eliminar
-                    </button>
+                    {yaComprada(c.id) ? (
+                      <button className="btn btn-secondary w-100" disabled>
+                        Ya comprada
+                      </button>
+                    ) : (
+                      <button
+                        className="btn btn-primary w-100"
+                        onClick={() =>
+                          agregarAlCarrito(
+                            {
+                              id: c.id,
+                              nombre: c.nombre,
+                              artista: c.artista,
+                              precio: c.precio,
+                              vendedor_id: c.vendedor_id,
+                              tipo: "cancion",
+                            },
+                            "cancion"
+                          )
+                        }
+                      >
+                        Agregar al carrito
+                      </button>
+                    )}
                   </>
-                )}
-
-                {/* ============================== */}
-                {/* OPCIONES PARA CLIENTES */}
-                {/* ============================== */}
-                {!esAdmin() && (
-                  <button
-                    className="btn btn-primary w-100"
-                    onClick={() =>
-                      agregarAlCarrito(
-                        {
-                          id: cancion.id,
-                          nombre: cancion.nombre,
-                          artista: cancion.artista,
-                          precio: cancion.precio,
-                          vendedor_id: cancion.vendedor_id,
-                          tipo: "cancion",
-                          cantidad: 1,
-                          precio_total: cancion.precio,
-                        },
-                        "cancion"
-                      )
-                    }
-                  >
-                    <i className="fa-solid fa-cart-plus"></i> Agregar al carrito
-                  </button>
                 )}
               </div>
             </div>
           </div>
         ))}
       </div>
+
+      {/* MODALES — CREAR Y EDITAR (iguales a los tuyos, no los modifico) */}
+
+      {/* MODAL CREAR */}
+      <div className="modal fade" id="modalCrearCancion" tabIndex="-1">
+        <div className="modal-dialog">
+          <div className="modal-content">
+
+            <div className="modal-header">
+              <h5 className="modal-title">Crear Canción</h5>
+              <button id="btnCerrarModalCrear" type="button" className="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div className="modal-body">
+              {["nombre", "artista", "genero", "duracion", "tamano_kb", "calidad_kbps", "precio"].map((campo) => (
+                <div className="mb-2" key={campo}>
+                  <label className="form-label">{campo}</label>
+                  <input
+                    type="text"
+                    name={campo}
+                    className="form-control"
+                    value={nueva[campo]}
+                    onChange={handleChange}
+                  />
+                </div>
+              ))}
+            </div>
+
+            <div className="modal-footer">
+              <button className="btn btn-success" onClick={crearCancion}>Guardar</button>
+              <button className="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      {/* MODAL EDITAR */}
+      <div className="modal fade" id="modalEditarCancion" tabIndex="-1">
+        <div className="modal-dialog">
+          <div className="modal-content">
+
+            <div className="modal-header">
+              <h5 className="modal-title">Editar Canción</h5>
+              <button id="btnCerrarModalEditar" type="button" className="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div className="modal-body">
+              {editando &&
+                ["nombre", "artista", "genero", "duracion", "tamano_kb", "calidad_kbps", "precio"].map((campo) => (
+                  <div className="mb-2" key={campo}>
+                    <label className="form-label">{campo}</label>
+                    <input
+                      type="text"
+                      name={campo}
+                      className="form-control"
+                      value={editando[campo]}
+                      onChange={handleChange}
+                    />
+                  </div>
+                ))}
+            </div>
+
+            <div className="modal-footer">
+              <button className="btn btn-warning" onClick={editarCancionFn}>Guardar cambios</button>
+              <button className="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
     </div>
   );
 }

@@ -45,3 +45,39 @@ def traer_compras_canciones_comprador(comprador_id):
             "error": "Error al consultar las compras de canciones",
             "detalle": str(e)
         }), 500
+@bp.route('/todas', methods=['GET'])
+def traer_todas_canciones():
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        query = """
+        SELECT 
+            cc.compra_id,
+            cc.cancion_id,
+            cc.comprador_id,
+            cc.vendedor_id,
+            cc.fecha_compra,
+            c.nombre AS titulo,
+            c.artista,
+            c.genero,
+            c.precio
+        FROM compras_canciones cc
+        JOIN canciones_nueva c ON cc.cancion_id = c.id
+        ORDER BY cc.fecha_compra DESC
+        """
+
+        cursor.execute(query)
+        filas = cursor.fetchall()
+
+        columnas = [c[0] for c in cursor.description]
+        compras = [dict(zip(columnas, f)) for f in filas]
+
+        return jsonify({
+            "ok": True,
+            "total": len(compras),
+            "compras": compras
+        })
+
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500

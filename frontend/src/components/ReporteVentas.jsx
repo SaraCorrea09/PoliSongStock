@@ -66,8 +66,58 @@ setTotalCanciones(sumaCanciones);
   };
 
   useEffect(() => {
-    cargarVentas();
-  }, []);
+  const cargarVentas = async () => {
+    try {
+      // =============================
+      // TODAS LAS COMPRAS DE CANCIONES
+      // =============================
+      const resC = await fetch(
+        "http://localhost:5000/api/traer-compras-canciones/todas"
+      );
+      const dataC = await resC.json();
+
+      const ventasC = Array.isArray(dataC.compras) ? dataC.compras : [];
+      setVentasCanciones(ventasC);
+
+      let sumaCanciones = 0;
+      ventasC.forEach((c) => {
+        const precio = Number(c.precio ?? 0);
+        if (!isNaN(precio)) sumaCanciones += precio;
+      });
+      setTotalCanciones(sumaCanciones);
+
+      // =============================
+      // TODAS LAS COMPRAS DE VINILOS
+      // =============================
+      const resV = await fetch(
+        "http://localhost:5000/api/traer-compras-vinilos/todas"
+      );
+      const dataV = await resV.json();
+
+      const ventasV = Array.isArray(dataV.compras) ? dataV.compras : [];
+      setVentasVinilos(ventasV);
+
+      let sumaVinilos = 0;
+      ventasV.forEach((v) => {
+        if (v.precio) sumaVinilos += Number(v.precio);
+      });
+      setTotalVinilos(sumaVinilos);
+
+      // =============================
+      // TOTAL GENERAL
+      // =============================
+      setTotalGeneral(sumaCanciones + sumaVinilos);
+
+      setLoading(false);
+    } catch (error) {
+      console.error(error);
+      setLoading(false);
+    }
+  };
+
+  cargarVentas();
+}, []);
+
 
   if (!esAdmin()) return <h2>No autorizado</h2>;
   if (loading) return <p>Cargando reporte...</p>;
